@@ -153,6 +153,136 @@ public class CricketPlayerRepository {
         return false;
     }
 
+    /**
+     * Checks whether a player exists by id.
+     *
+     * @param id player id
+     * @return true if exists, false otherwise
+     */
+    public boolean playerExistsById(int id) {
+
+        String sql = "SELECT COUNT(*) FROM cricket_player WHERE id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+    
+    /**
+     * Checks whether another player (excluding given id)
+     * exists with the same name and team.
+     *
+     * @param name player name
+     * @param team player team
+     * @param id   current player id
+     * @return true if duplicate exists, false otherwise
+     */
+    public boolean playerExistsForOtherId(String name, String team, int id) {
+
+        String sql =
+                "SELECT COUNT(*) FROM cricket_player " +
+                "WHERE name = ? AND team = ? AND id <> ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, name);
+            ps.setString(2, team);
+            ps.setInt(3, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    /**
+     * Fetches a player by id.
+     *
+     * @param id player id
+     * @return CricketPlayer if found, null otherwise
+     */
+    public CricketPlayer getPlayerById(int id) {
+
+        String sql = "SELECT * FROM cricket_player WHERE id = ?";
+        CricketPlayer player = null;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                player = new CricketPlayer();
+                player.setId(rs.getInt("id"));
+                player.setName(rs.getString("name"));
+                player.setTeam(rs.getString("team"));
+                player.setRole(rs.getString("role"));
+                player.setRuns(rs.getInt("runs"));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return player;
+    }
+
+
+    
+    /**
+     * Updates an existing player using full replacement (PUT semantics).
+     *
+     * @param id player id
+     * @param player updated player data
+     * @return true if update succeeded
+     */
+    public boolean updatePlayer(int id, CricketPlayer player) {
+
+        String sql =
+                "UPDATE cricket_player " +
+                "SET name = ?, team = ?, role = ?, runs = ? " +
+                "WHERE id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, player.getName());
+            ps.setString(2, player.getTeam());
+            ps.setString(3, player.getRole());
+            ps.setInt(4, player.getRuns());
+            ps.setInt(5, id);
+
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 
     public void save(CricketPlayer p) {
 

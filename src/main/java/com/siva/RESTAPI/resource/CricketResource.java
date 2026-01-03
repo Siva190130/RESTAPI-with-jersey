@@ -6,7 +6,9 @@ import com.siva.RESTAPI.repository.CricketPlayerRepository;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -208,6 +210,140 @@ public class CricketResource {
                        .entity(response)
                        .build();
     }
+    
+    
+    /**
+     * Handles HTTP PUT request to fully update a player.
+     * Example:
+     *   PUT /players/10
+     */
+    @PUT
+    @Path("/players/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response updatePlayer(@PathParam("id") int id,
+                                 CricketPlayer player) {
+
+        // ---------- Validate request body ----------
+        if (player == null ||
+            player.getName() == null || player.getName().trim().isEmpty() ||
+            player.getTeam() == null || player.getTeam().trim().isEmpty() ||
+            player.getRole() == null || player.getRole().trim().isEmpty()) {
+
+            ApiResponse<String> response =
+                    new ApiResponse<>(400,
+                                      "All player fields are required for PUT",
+                                      null);
+
+            return Response.status(Response.Status.BAD_REQUEST)
+                           .entity(response)
+                           .build();
+        }
+
+        // ---------- Check existence ----------
+        if (!repository.playerExistsById(id)) {
+
+            ApiResponse<String> response =
+                    new ApiResponse<>(404,
+                                      "Player not found",
+                                      null);
+
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(response)
+                           .build();
+        }
+
+        // ---------- Prevent duplicate (name + team) ----------
+        boolean duplicate =
+                repository.playerExistsForOtherId(
+                        player.getName(),
+                        player.getTeam(),
+                        id
+                );
+
+
+        if (duplicate) {
+
+            ApiResponse<String> response =
+                    new ApiResponse<>(409,
+                                      "Another player with same name and team exists",
+                                      null);
+
+            return Response.status(Response.Status.CONFLICT)
+                           .entity(response)
+                           .build();
+        }
+
+        // ---------- Update ----------
+        repository.updatePlayer(id, player);
+
+        ApiResponse<CricketPlayer> response =
+                new ApiResponse<>(200,
+                                  "Player updated successfully",
+                                  player);
+
+        return Response.status(Response.Status.OK)
+                       .entity(response)
+                       .build();
+    }
+    
+    
+    /**
+     * Partially updates a cricket player.
+     * Only non-null fields will be updated.
+     */
+    @PATCH
+    @Path("/players/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response patchPlayer(@PathParam("id") int id,
+                                CricketPlayer incomingPlayer) {
+
+        // ---------- Step 1: Fetch existing player ----------
+        CricketPlayer existingPlayer = repository.getPlayerById(id);
+
+        if (existingPlayer == null) {
+            ApiResponse<String> response =
+                    new ApiResponse<>(404,
+                                      "Player not found",
+                                      null);
+
+            return Response.status(Response.Status.NOT_FOUND)
+                           .entity(response)
+                           .build();
+        }
+
+        // ---------- Step 2: Update only provided fields ----------
+        if (incomingPlayer.getName() != null) {
+            existingPlayer.setName(incomingPlayer.getName());
+        }
+
+        if (incomingPlayer.getTeam() != null) {
+            existingPlayer.setTeam(incomingPlayer.getTeam());
+        }
+
+        if (incomingPlayer.getRole() != null) {
+            existingPlayer.setRole(incomingPlayer.getRole());
+        }
+
+        if (incomingPlayer.getRuns() != 0) {
+            existingPlayer.setRuns(incomingPlayer.getRuns());
+        }
+
+        // ---------- Step 3: Save updated player ----------
+        repository.updatePlayer(id, existingPlayer);
+
+        ApiResponse<CricketPlayer> response =
+                new ApiResponse<>(200,
+                                  "Player updated successfully",
+                                  existingPlayer);
+
+        return Response.status(Response.Status.OK)
+                       .entity(response)
+                       .build();
+    }
+
+
 
 
 }
