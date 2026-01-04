@@ -339,4 +339,28 @@ public class CricketPlayerRepository {
         }
     }
 
+    /**
+     * Deletes a player by id.
+     *
+     * @param id player id
+     * @return true if deleted, false otherwise
+     */
+    public boolean deletePlayerById(int id) {
+
+        String sql = "DELETE FROM cricket_player WHERE id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            // executeUpdate returns number of rows affected
+            return ps.executeUpdate() == 1;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }

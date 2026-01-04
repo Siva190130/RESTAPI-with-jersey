@@ -1,10 +1,14 @@
 package com.siva.RESTAPI.resource;
 
+import com.siva.RESTAPI.exception.DuplicatePlayerException;
+import com.siva.RESTAPI.exception.PlayerNotFoundException;
+import com.siva.RESTAPI.exception.ValidationException;
 import com.siva.RESTAPI.model.ApiResponse;
 import com.siva.RESTAPI.model.CricketPlayer;
 import com.siva.RESTAPI.repository.CricketPlayerRepository;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -46,14 +50,12 @@ public class CricketResource {
 
         // If no player found, return 404 Not Found
         if (player == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                           .build();
+            throw new PlayerNotFoundException(id);
         }
 
+
         // If found, return 200 OK with player data
-        return Response.status(Response.Status.OK)
-                       .entity(player)   // JSON body
-                       .build();
+        return Response.ok(player).build();
     }
     
     
@@ -74,10 +76,7 @@ public class CricketResource {
         if (name == null || name.trim().isEmpty()) {
 
             // Return 400 Bad Request if name is missing
-            return Response
-                    .status(Response.Status.BAD_REQUEST)
-                    .entity("Query parameter 'name' must not be empty")
-                    .build();
+        	throw new ValidationException("Query parameter 'name' must not be empty");
         }
 
         
@@ -86,10 +85,7 @@ public class CricketResource {
                 repository.getPlayersByName(name);
 
         // Return successful response with fetched data
-        return Response
-                .status(Response.Status.OK)
-                .entity(players)
-                .build();
+        return Response.ok(players).build();
     }
 
 
@@ -109,14 +105,9 @@ public class CricketResource {
             player.getTeam() == null || player.getTeam().trim().isEmpty() ||
             player.getRole() == null || player.getRole().trim().isEmpty()) {
 
-            ApiResponse<String> response =
-                    new ApiResponse<>(400,
-                                      "Invalid player data. Name, team, and role are required.",
-                                      null);
-
-            return Response.status(Response.Status.BAD_REQUEST)
-                           .entity(response)
-                           .build();
+        	 throw new ValidationException(
+        	            "Invalid player data. Name, team, and role are required."
+        	    );
         }
 
         // ---------- Duplicate check (name + team) ----------
@@ -124,14 +115,10 @@ public class CricketResource {
                 repository.playerExists(player.getName(), player.getTeam());
 
         if (exists) {
-            ApiResponse<String> response =
-                    new ApiResponse<>(409,
-                                      "Player already exists for this team.",
-                                      null);
-
-            return Response.status(Response.Status.CONFLICT)
-                           .entity(response)
-                           .build();
+        	throw new DuplicatePlayerException(
+                    player.getName(),
+                    player.getTeam()
+            );
         }
 
         // ---------- Save player ----------
@@ -160,14 +147,9 @@ public class CricketResource {
         // ---------- Validate request ----------
         if (players == null || players.isEmpty()) {
 
-            ApiResponse<String> response =
-                    new ApiResponse<>(400,
-                                      "Player list must not be empty.",
-                                      null);
-
-            return Response.status(Response.Status.BAD_REQUEST)
-                           .entity(response)
-                           .build();
+        	 throw new ValidationException(
+        	            "Players list must not be empty"
+        	    );
         }
 
         List<CricketPlayer> insertedPlayers = new ArrayList<>();
@@ -230,27 +212,14 @@ public class CricketResource {
             player.getTeam() == null || player.getTeam().trim().isEmpty() ||
             player.getRole() == null || player.getRole().trim().isEmpty()) {
 
-            ApiResponse<String> response =
-                    new ApiResponse<>(400,
-                                      "All player fields are required for PUT",
-                                      null);
+        	throw new ValidationException("All player fields are required for PUT");
 
-            return Response.status(Response.Status.BAD_REQUEST)
-                           .entity(response)
-                           .build();
         }
 
         // ---------- Check existence ----------
         if (!repository.playerExistsById(id)) {
 
-            ApiResponse<String> response =
-                    new ApiResponse<>(404,
-                                      "Player not found",
-                                      null);
-
-            return Response.status(Response.Status.NOT_FOUND)
-                           .entity(response)
-                           .build();
+        	 throw new PlayerNotFoundException(id);
         }
 
         // ---------- Prevent duplicate (name + team) ----------
@@ -264,27 +233,16 @@ public class CricketResource {
 
         if (duplicate) {
 
-            ApiResponse<String> response =
-                    new ApiResponse<>(409,
-                                      "Another player with same name and team exists",
-                                      null);
-
-            return Response.status(Response.Status.CONFLICT)
-                           .entity(response)
-                           .build();
+        	throw new DuplicatePlayerException(
+                    player.getName(),
+                    player.getTeam()
+            );
         }
 
         // ---------- Update ----------
         repository.updatePlayer(id, player);
 
-        ApiResponse<CricketPlayer> response =
-                new ApiResponse<>(200,
-                                  "Player updated successfully",
-                                  player);
-
-        return Response.status(Response.Status.OK)
-                       .entity(response)
-                       .build();
+        return Response.ok(player).build();
     }
     
     
@@ -303,14 +261,8 @@ public class CricketResource {
         CricketPlayer existingPlayer = repository.getPlayerById(id);
 
         if (existingPlayer == null) {
-            ApiResponse<String> response =
-                    new ApiResponse<>(404,
-                                      "Player not found",
-                                      null);
-
-            return Response.status(Response.Status.NOT_FOUND)
-                           .entity(response)
-                           .build();
+            
+        	 throw new PlayerNotFoundException(id);
         }
 
         // ---------- Step 2: Update only provided fields ----------
@@ -343,7 +295,25 @@ public class CricketResource {
                        .build();
     }
 
+    /**
+     * Deletes a cricket player by id.
+     * Returns 204 No Content on success.
+     */
+    @DELETE
+    @Path("/players/{id}")
+    public Response deletePlayer(@PathParam("id") int id) {
 
+        // ---------- Check existence ----------
+        if (!repository.playerExistsById(id)) {
 
+        	 throw new PlayerNotFoundException(id);
+        }
+
+        // ---------- Delete player ----------
+        repository.deletePlayerById(id);
+
+        // ---------- REST-pure response ----------
+        return Response.noContent().build(); // 204
+    }
 
 }
