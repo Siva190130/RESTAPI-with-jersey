@@ -3,10 +3,12 @@ package com.siva.RESTAPI.service;
 import com.siva.RESTAPI.exception.DuplicatePlayerException;
 import com.siva.RESTAPI.exception.PlayerNotFoundException;
 import com.siva.RESTAPI.exception.ValidationException;
+import com.siva.RESTAPI.model.ApiResponse;
 import com.siva.RESTAPI.model.CricketPlayer;
 import com.siva.RESTAPI.repository.CricketPlayersRepository;
 import com.siva.RESTAPI.repository.JdbcCricketPlayerRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CricketPlayerService {
@@ -52,6 +54,53 @@ public class CricketPlayerService {
 
         repository.save(player);
         return player;
+    }
+    
+    /**
+     * Bulk insert business logic.
+     * Skips invalid and duplicate records.
+     */
+    public ApiResponse<?> addPlayersInBulk(List<CricketPlayer> players) {
+
+        if (players == null || players.isEmpty()) {
+            throw new ValidationException("Players list must not be empty");
+        }
+
+        List<CricketPlayer> validPlayers = new ArrayList<>();
+        List<CricketPlayer> skippedPlayers = new ArrayList<>();
+
+        for (CricketPlayer player : players) {
+
+            try {
+                // Reuse single authoritative validation logic
+                validatePlayer(player);
+
+                // Duplicate check
+                if (repository.playerExists(player.getName(), player.getTeam())) {
+                    skippedPlayers.add(player);
+                    continue;
+                }
+
+                validPlayers.add(player);
+
+            } catch (ValidationException ex) {
+                // In bulk mode, validation failure means "skip", not "fail"
+                skippedPlayers.add(player);
+            }
+        }
+
+        if (!validPlayers.isEmpty()) {
+            repository.saveAll(validPlayers);
+        }
+
+        return new ApiResponse<>(
+                201,
+                "Bulk insert completed. Inserted: "
+                        + validPlayers.size()
+                        + ", Skipped: "
+                        + skippedPlayers.size(),
+                validPlayers
+        );
     }
 
     /* ---------------- UPDATE (PUT) ---------------- */
@@ -128,4 +177,5 @@ public class CricketPlayerService {
             );
         }
     }
+   
 }

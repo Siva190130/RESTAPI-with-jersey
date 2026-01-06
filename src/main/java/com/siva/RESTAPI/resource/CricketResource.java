@@ -106,6 +106,26 @@ public class CricketResource {
     }
 
     /**
+     * Bulk insert endpoint.
+     *
+     * Resource only checks request shape.
+     * All business rules are handled in Service.
+     */
+    @POST
+    @Path("/bulk")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addPlayersInBulk(List<CricketPlayer> players) {
+
+        ApiResponse<?> response = service.addPlayersInBulk(players);
+
+        return Response.status(Response.Status.CREATED)
+                .entity(response)
+                .build();
+    }
+
+    
+    /**
      * HTTP PUT
      * URL: /cricket/players/{id}
      *
