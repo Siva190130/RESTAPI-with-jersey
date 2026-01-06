@@ -1,5 +1,28 @@
 package com.siva.RESTAPI.repository;
 
+/**
+ * ------------------------------------------------------------
+ * JdbcCricketPlayerRepository
+ * ------------------------------------------------------------
+ *
+ * JDBC-based implementation of CricketPlayersRepository.
+ *
+ * Author      : Shiv (Associate Software Engineer)
+ * Project     : RESTAPI
+ *
+ * Responsibilities:
+ * - Execute SQL queries
+ * - Manage JDBC resources
+ * - Map ResultSet to domain objects
+ *
+ * Does NOT:
+ * - Perform validation
+ * - Throw business/domain exceptions
+ *
+ * ------------------------------------------------------------
+ */
+
+
 import com.siva.RESTAPI.model.CricketPlayer;
 import com.siva.RESTAPI.util.DBConnection;
 

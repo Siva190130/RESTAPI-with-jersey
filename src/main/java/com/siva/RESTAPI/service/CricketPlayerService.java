@@ -1,5 +1,29 @@
 package com.siva.RESTAPI.service;
 
+/**
+ * ------------------------------------------------------------
+ * CricketPlayerService
+ * ------------------------------------------------------------
+ *
+ * Service layer containing ALL business logic for Cricket APIs.
+ *
+ * Author      : Shiv (Associate Software Engineer)
+ * Project     : RESTAPI (JAX-RS / Jersey)
+ *
+ * Responsibilities:
+ * - Perform validations
+ * - Enforce business rules
+ * - Throw domain-specific exceptions
+ * - Orchestrate repository operations
+ *
+ * Does NOT:
+ * - Handle HTTP concerns
+ * - Access JDBC directly
+ *
+ * ------------------------------------------------------------
+ */
+
+
 import com.siva.RESTAPI.exception.DuplicatePlayerException;
 import com.siva.RESTAPI.exception.PlayerNotFoundException;
 import com.siva.RESTAPI.exception.ValidationException;

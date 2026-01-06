@@ -1,5 +1,26 @@
 package com.siva.RESTAPI.repository;
 
+/**
+ * ------------------------------------------------------------
+ * CricketPlayersRepository
+ * ------------------------------------------------------------
+ *
+ * Repository contract defining persistence operations
+ * for CricketPlayer entities.
+ *
+ * Author      : Shiv (Associate Software Engineer)
+ * Project     : RESTAPI
+ *
+ * Notes:
+ * - This is a CONTRACT only
+ * - No business logic
+ * - No SQL
+ * - Implemented by JDBC / JPA repositories
+ *
+ * ------------------------------------------------------------
+ */
+
+
 import com.siva.RESTAPI.model.CricketPlayer;
 import java.util.List;
 
