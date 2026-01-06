@@ -1,133 +1,104 @@
 package com.siva.RESTAPI.resource;
 
-import com.siva.RESTAPI.exception.DuplicatePlayerException;
-import com.siva.RESTAPI.exception.PlayerNotFoundException;
-import com.siva.RESTAPI.exception.ValidationException;
 import com.siva.RESTAPI.model.ApiResponse;
 import com.siva.RESTAPI.model.CricketPlayer;
-import com.siva.RESTAPI.repository.CricketPlayerRepository;
+import com.siva.RESTAPI.service.CricketPlayerService;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
-import java.util.ArrayList;
 import java.util.List;
 
 @Path("/cricket")
 public class CricketResource {
 
-    private final CricketPlayerRepository repository = new CricketPlayerRepository();
+    /**
+     * Service layer acts as the business logic coordinator.
+     * Resource layer should NOT directly interact with the repository.
+     */
+    private final CricketPlayerService service = new CricketPlayerService();
 
+    /**
+     * HTTP GET
+     * URL: /cricket
+     *
+     * Responsibility:
+     * - Accept HTTP request
+     * - Delegate business logic to Service layer
+     * - Return HTTP response
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<CricketPlayer> getAllPlayers() {
-        return repository.findAll();
+
+        // Delegates data fetching to service layer
+        return service.getAllPlayers();
     }
-    
+
     /**
-     * HTTP GET method
-     * URL: /api/cricket/{id}
-     * Purpose: Fetch a single player using ID
+     * HTTP GET
+     * URL: /cricket/{id}
+     *
+     * Responsibility:
+     * - Extract path parameter
+     * - Delegate existence check and fetching to Service layer
+     * - Return HTTP response only
      */
     @GET
-    @Path("/{id}")                       // Path variable (dynamic value)
+    @Path("/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getPlayerById(
-            @PathParam("id") int id) {   // Extracts ID from URL
+    public Response getPlayerById(@PathParam("id") int id) {
 
-        // Fetch player from database
-        CricketPlayer player = repository.findById(id);
+        // Service layer handles:
+        // - Existence validation
+        // - PlayerNotFoundException if needed
+        CricketPlayer player = service.getPlayerById(id);
 
-        // If no player found, return 404 Not Found
-        if (player == null) {
-            throw new PlayerNotFoundException(id);
-        }
-
-
-        // If found, return 200 OK with player data
         return Response.ok(player).build();
     }
-    
-    
+
     /**
-     * Handles HTTP GET request to fetch players based on name.
-     * Example:
-     *   GET /cricket/players?name=Virat
+     * HTTP GET
+     * URL: /cricket/players?name=Virat
      *
-     * @param name query parameter used to filter players by name
-     * @return HTTP response containing list of matching players
+     * Responsibility:
+     * - Read query parameter
+     * - Delegate validation & filtering logic to Service layer
      */
     @GET
     @Path("/players")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getPlayersByName(@QueryParam("name") String name) {
 
-        // Validate query parameter
-        if (name == null || name.trim().isEmpty()) {
+        // Validation logic moved to service layer
+        List<CricketPlayer> players = service.getPlayersByName(name);
 
-            // Return 400 Bad Request if name is missing
-        	throw new ValidationException("Query parameter 'name' must not be empty");
-        }
-
-        
-		// Fetch players from repository based on name
-        List<CricketPlayer> players =
-                repository.getPlayersByName(name);
-
-        // Return successful response with fetched data
         return Response.ok(players).build();
     }
 
-
-
     /**
-     * Creates a single cricket player.
-     * Performs basic validation and duplicate check.
+     * HTTP POST
+     * URL: /cricket
+     *
+     * Responsibility:
+     * - Accept request body
+     * - Delegate validation, duplicate check, and save logic to Service layer
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response addPlayer(CricketPlayer player) {
 
-        // ---------- Basic validation ----------
-        if (player == null ||
-            player.getName() == null || player.getName().trim().isEmpty() ||
-            player.getTeam() == null || player.getTeam().trim().isEmpty() ||
-            player.getRole() == null || player.getRole().trim().isEmpty()) {
-
-        	 throw new ValidationException(
-        	            "Invalid player data. Name, team, and role are required."
-        	    );
-        }
-
-        // ---------- Duplicate check (name + team) ----------
-        boolean exists =
-                repository.playerExists(player.getName(), player.getTeam());
-
-        if (exists) {
-        	throw new DuplicatePlayerException(
-                    player.getName(),
-                    player.getTeam()
-            );
-        }
-
-        // ---------- Save player ----------
-        repository.save(player);
+        // Service layer handles:
+        // - Field validation
+        // - Duplicate checks
+        // - Persistence
+        CricketPlayer saved = service.createPlayer(player);
 
         ApiResponse<CricketPlayer> response =
                 new ApiResponse<>(201,
                                   "Player inserted successfully",
-                                  player);
+                                  saved);
 
         return Response.status(Response.Status.CREATED)
                        .entity(response)
@@ -135,69 +106,12 @@ public class CricketResource {
     }
 
     /**
-     * Inserts multiple cricket players in bulk.
-     * Skips duplicates and invalid records.
-     */
-    @POST
-    @Path("/bulk")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response addPlayers(List<CricketPlayer> players) {
-
-        // ---------- Validate request ----------
-        if (players == null || players.isEmpty()) {
-
-        	 throw new ValidationException(
-        	            "Players list must not be empty"
-        	    );
-        }
-
-        List<CricketPlayer> insertedPlayers = new ArrayList<>();
-        List<CricketPlayer> skippedPlayers  = new ArrayList<>();
-
-        // ---------- Process each player ----------
-        for (CricketPlayer player : players) {
-
-            // Basic validation
-            if (player.getName() == null || player.getName().trim().isEmpty() ||
-                player.getTeam() == null || player.getTeam().trim().isEmpty() ||
-                player.getRole() == null || player.getRole().trim().isEmpty()) {
-
-                skippedPlayers.add(player);
-                continue;
-            }
-
-            // Duplicate check
-            boolean exists =
-                    repository.playerExists(player.getName(), player.getTeam());
-
-            if (exists) {
-                skippedPlayers.add(player);
-                continue;
-            }
-
-            repository.save(player);
-            insertedPlayers.add(player);
-        }
-
-        // ---------- Prepare response ----------
-        ApiResponse<Object> response =
-                new ApiResponse<>(201,
-                                  "Bulk insert completed. "
-                                          + "Inserted: " + insertedPlayers.size()
-                                          + ", Skipped: " + skippedPlayers.size(),
-                                  insertedPlayers);
-
-        return Response.status(Response.Status.CREATED)
-                       .entity(response)
-                       .build();
-    }
-    
-    
-    /**
-     * Handles HTTP PUT request to fully update a player.
-     * Example:
-     *   PUT /players/10
+     * HTTP PUT
+     * URL: /cricket/players/{id}
+     *
+     * Responsibility:
+     * - Accept full object replacement
+     * - Delegate all business rules to Service layer
      */
     @PUT
     @Path("/players/{id}")
@@ -206,49 +120,22 @@ public class CricketResource {
     public Response updatePlayer(@PathParam("id") int id,
                                  CricketPlayer player) {
 
-        // ---------- Validate request body ----------
-        if (player == null ||
-            player.getName() == null || player.getName().trim().isEmpty() ||
-            player.getTeam() == null || player.getTeam().trim().isEmpty() ||
-            player.getRole() == null || player.getRole().trim().isEmpty()) {
+        // Service layer handles:
+        // - Validation
+        // - Existence check
+        // - Duplicate prevention
+        CricketPlayer updated = service.updatePlayer(id, player);
 
-        	throw new ValidationException("All player fields are required for PUT");
-
-        }
-
-        // ---------- Check existence ----------
-        if (!repository.playerExistsById(id)) {
-
-        	 throw new PlayerNotFoundException(id);
-        }
-
-        // ---------- Prevent duplicate (name + team) ----------
-        boolean duplicate =
-                repository.playerExistsForOtherId(
-                        player.getName(),
-                        player.getTeam(),
-                        id
-                );
-
-
-        if (duplicate) {
-
-        	throw new DuplicatePlayerException(
-                    player.getName(),
-                    player.getTeam()
-            );
-        }
-
-        // ---------- Update ----------
-        repository.updatePlayer(id, player);
-
-        return Response.ok(player).build();
+        return Response.ok(updated).build();
     }
-    
-    
+
     /**
-     * Partially updates a cricket player.
-     * Only non-null fields will be updated.
+     * HTTP PATCH
+     * URL: /cricket/players/{id}
+     *
+     * Responsibility:
+     * - Accept partial updates
+     * - Delegate merge & persistence logic to Service layer
      */
     @PATCH
     @Path("/players/{id}")
@@ -257,63 +144,37 @@ public class CricketResource {
     public Response patchPlayer(@PathParam("id") int id,
                                 CricketPlayer incomingPlayer) {
 
-        // ---------- Step 1: Fetch existing player ----------
-        CricketPlayer existingPlayer = repository.getPlayerById(id);
-
-        if (existingPlayer == null) {
-            
-        	 throw new PlayerNotFoundException(id);
-        }
-
-        // ---------- Step 2: Update only provided fields ----------
-        if (incomingPlayer.getName() != null) {
-            existingPlayer.setName(incomingPlayer.getName());
-        }
-
-        if (incomingPlayer.getTeam() != null) {
-            existingPlayer.setTeam(incomingPlayer.getTeam());
-        }
-
-        if (incomingPlayer.getRole() != null) {
-            existingPlayer.setRole(incomingPlayer.getRole());
-        }
-
-        if (incomingPlayer.getRuns() != 0) {
-            existingPlayer.setRuns(incomingPlayer.getRuns());
-        }
-
-        // ---------- Step 3: Save updated player ----------
-        repository.updatePlayer(id, existingPlayer);
+        // Service layer handles:
+        // - Fetch existing entity
+        // - Apply partial updates
+        // - Save changes
+        CricketPlayer updated = service.patchPlayer(id, incomingPlayer);
 
         ApiResponse<CricketPlayer> response =
                 new ApiResponse<>(200,
                                   "Player updated successfully",
-                                  existingPlayer);
+                                  updated);
 
-        return Response.status(Response.Status.OK)
-                       .entity(response)
-                       .build();
+        return Response.ok(response).build();
     }
 
     /**
-     * Deletes a cricket player by id.
-     * Returns 204 No Content on success.
+     * HTTP DELETE
+     * URL: /cricket/players/{id}
+     *
+     * Responsibility:
+     * - Delegate existence check and delete operation to Service layer
+     * - Return REST-pure 204 response
      */
     @DELETE
     @Path("/players/{id}")
     public Response deletePlayer(@PathParam("id") int id) {
 
-        // ---------- Check existence ----------
-        if (!repository.playerExistsById(id)) {
+        // Service layer handles:
+        // - Player existence validation
+        // - Delete operation
+        service.deletePlayer(id);
 
-        	 throw new PlayerNotFoundException(id);
-        }
-
-        // ---------- Delete player ----------
-        repository.deletePlayerById(id);
-
-        // ---------- REST-pure response ----------
         return Response.noContent().build(); // 204
     }
-
 }

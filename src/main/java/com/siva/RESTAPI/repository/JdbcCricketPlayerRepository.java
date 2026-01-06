@@ -10,7 +10,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CricketPlayerRepository {
+public class JdbcCricketPlayerRepository
+implements CricketPlayersRepository {
 
     public List<CricketPlayer> findAll() {
         List<CricketPlayer> list = new ArrayList<>();
