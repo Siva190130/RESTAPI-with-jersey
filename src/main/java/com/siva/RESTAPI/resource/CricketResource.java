@@ -1,5 +1,28 @@
 package com.siva.RESTAPI.resource;
 
+/**
+ * ------------------------------------------------------------
+ * CricketResource
+ * ------------------------------------------------------------
+ *
+ * REST Resource class exposing Cricket Player APIs.
+ *
+ * Author      : Shiv (Associate Software Engineer)
+ * Project     : RESTAPI (JAX-RS / Jersey)
+ * Description : Handles HTTP requests and delegates all
+ *               business logic to the Service layer.
+ *
+ * Architecture:
+ *   Resource  →  Service  →  Repository Interface  →  JDBC Repo
+ *
+ * Notes:
+ * - This class contains NO business logic.
+ * - All validations and exceptions are handled in Service.
+ * - Responses follow RESTful HTTP semantics.
+ *
+ * ------------------------------------------------------------
+ */
+
 import com.siva.RESTAPI.model.ApiResponse;
 import com.siva.RESTAPI.model.CricketPlayer;
 import com.siva.RESTAPI.service.CricketPlayerService;
